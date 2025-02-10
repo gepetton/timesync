@@ -3,24 +3,33 @@ import HomePage from '@/features/pages/Home/HomePage';
 import CreateRoomForm from '@/features/room/CreateRoomForm';
 import RoomView from '@/features/room/RoomView';
 import NotFoundPage from '@/features/pages/NotFound';
+import PageTransition from '@/shared/components/common/PageTransition';
+
+const withPageTransition = (Component) => {
+  return (
+    <PageTransition>
+      <Component />
+    </PageTransition>
+  );
+};
 
 export const router = createBrowserRouter(
   [
     {
       path: '/',
-      element: <HomePage />,
+      element: withPageTransition(HomePage),
     },
     {
       path: '/create-room',
-      element: <CreateRoomForm />,
+      element: withPageTransition(CreateRoomForm),
     },
     {
       path: '/room/:roomId',
-      element: <RoomView />,
+      element: withPageTransition(RoomView),
     },
     {
       path: '*',
-      element: <NotFoundPage />
+      element: withPageTransition(NotFoundPage)
     }
   ],
   {
