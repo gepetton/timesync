@@ -41,10 +41,10 @@ function RoomHeader({ onShareClick }) {
           >
             <Link to="/" className="inline-block" onClick={handleLogoClick}>
               <div className="relative">
-                <span className="text-2xl font-black bg-gradient-to-r from-indigo-600 via-purple-500 to-indigo-600 text-transparent bg-clip-text tracking-tight hover:from-indigo-500 hover:via-purple-400 hover:to-indigo-500 transition-all duration-300">
+                <span className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-500 to-indigo-600 text-transparent bg-clip-text tracking-tight hover:from-indigo-500 hover:via-purple-400 hover:to-indigo-500 transition-all duration-300">
                   Time
                 </span>
-                <span className="text-2xl font-black bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-transparent bg-clip-text tracking-tight hover:from-purple-400 hover:via-indigo-400 hover:to-purple-500 transition-all duration-300">
+                <span className="text-3xl font-black bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 text-transparent bg-clip-text tracking-tight hover:from-purple-400 hover:via-indigo-400 hover:to-purple-500 transition-all duration-300">
                   Sync
                 </span>
                 <div className="absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>

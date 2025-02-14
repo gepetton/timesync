@@ -1,8 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom';
-import HomePage from '@/features/pages/Home/HomePage';
-import CreateRoomForm from '@/features/room/CreateRoomForm';
-import RoomView from '@/features/room/RoomView';
-import NotFoundPage from '@/features/pages/NotFound';
+import HomePage from '@/pages/Home/HomePage';
+import CreateRoomForm from '@/pages/Room/CreateRoomForm';
+import RoomView from '@/pages/Room/RoomView';
+import NotFoundPage from '@/pages/NotFound/NotFoundPage';
 import PageTransition from '@/shared/components/common/PageTransition';
 
 const withPageTransition = (Component) => {

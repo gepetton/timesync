@@ -118,8 +118,9 @@ const HomePage = () => {
       {/* Footer - 더 세련된 디자인 */}
       <footer className="bg-white/70 backdrop-blur-sm border-t border-gray-100">
         <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-8">
+            {/* 브랜드 섹션 */}
+            <div className="sm:col-span-1">
               <h3 className="font-bold text-xl mb-4 text-gray-900">TimeSync</h3>
               <p className="text-gray-600 text-sm mb-4 leading-relaxed">
                 더 쉽고 스마트한 시간 조율,<br />
@@ -135,30 +136,50 @@ const HomePage = () => {
               </div>
             </div>
 
-            <div>
-              <h3 className="font-bold text-sm mb-4 text-gray-900">문의</h3>
+            {/* 제품 섹션 */}
+            <div className="sm:col-span-1">
+              <h3 className="font-bold text-sm mb-4 text-gray-900">제품</h3>
               <ul className="space-y-2">
                 <li>
-                  <a href="mailto:support@timesync.kr" 
-                     className="text-gray-600 hover:text-indigo-600 transition-colors text-sm">
-                    이메일 문의하기
+                  <Link to="/create-room" className="text-gray-600 hover:text-indigo-600 transition-colors text-sm">
+                    모임 만들기
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* 리소스 섹션 */}
+            <div className="sm:col-span-1">
+              <h3 className="font-bold text-sm mb-4 text-gray-900">리소스</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="https://github.com/gepetton/timesync" 
+                     className="text-gray-600 hover:text-indigo-600 transition-colors text-sm"
+                     target="_blank"
+                     rel="noopener noreferrer">
+                    개발자 문서
                   </a>
                 </li>
               </ul>
             </div>
 
-            <div>
-              <h3 className="font-bold text-sm mb-4 text-gray-900">약관</h3>
+            {/* 문의 섹션 */}
+            <div className="sm:col-span-1">
+              <h3 className="font-bold text-sm mb-4 text-gray-900">문의</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/privacy" className="text-gray-600 hover:text-indigo-600 transition-colors text-sm">
-                    개인정보처리방침
-                  </Link>
+                  <a href="mailto:sehyeon73@gmail.com" 
+                     className="text-gray-600 hover:text-indigo-600 transition-colors text-sm">
+                    이메일 문의하기
+                  </a>
                 </li>
                 <li>
-                  <Link to="/terms" className="text-gray-600 hover:text-indigo-600 transition-colors text-sm">
-                    이용약관
-                  </Link>
+                  <a href="https://github.com/gepetton/timesync/issues" 
+                     className="text-gray-600 hover:text-indigo-600 transition-colors text-sm"
+                     target="_blank"
+                     rel="noopener noreferrer">
+                    버그 리포트
+                  </a>
                 </li>
               </ul>
             </div>
@@ -166,7 +187,7 @@ const HomePage = () => {
 
           <div className="border-t border-gray-100 mt-8 pt-8 text-center">
             <p className="text-gray-500 text-sm">
-              TimeSync © MIT License
+              © 2024 TimeSync. MIT License
             </p>
           </div>
         </div>
