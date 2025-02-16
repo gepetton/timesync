@@ -21,7 +21,7 @@ TimeSync는 실시간 채팅과 AI의 도움으로 여러분의 모임 시간 �
 - 🔗 **간편한 공유**: 클릭 한 번으로 모임방 생성 및 공유
 - 📅 **다양한 캘린더 뷰**: 월간/주간/일간 캘린더 제공
 - 💬 **실시간 채팅**: 즉각적인 의견 교환 가능
-- 🤖 **AI 분석**: DeepSeek AI가 최적의 시간대 추천
+- 🤖 **AI 분석**: Google Gemini AI가 최적의 시간대 추천
 - 🎯 **즉시 시작**: 회원가입 없이 바로 시작
 
 ## 🖥️ 데모
@@ -58,7 +58,7 @@ npm run dev
 `.env` 파일을 생성하고 다음 변수를 설정하세요:
 
 ```plaintext
-VITE_DEEPSEEK_API_KEY=your_api_key_here
+VITE_GEMINI_API_KEY=your_api_key_here
 ```
 
 ## 📱 사용 방법
@@ -73,7 +73,7 @@ VITE_DEEPSEEK_API_KEY=your_api_key_here
 
 - **Frontend:** React, Vite, TailwindCSS
 - **상태 관리:** React Context
-- **AI 통합:** DeepSeek API
+- **AI 통합:** Google Gemini API
 - **기타:** date-fns, react-router-dom
 
 ## 🤝 기여하기
@@ -94,7 +94,7 @@ VITE_DEEPSEEK_API_KEY=your_api_key_here
 
 ## 🙏 감사의 말
 
-- [DeepSeek](https://deepseek.com) - AI 기능 제공
+- [Google Gemini](https://ai.google.dev/) - AI 기능 제공
 - [React](https://reactjs.org)
 - [Vite](https://vitejs.dev)
 - [TailwindCSS](https://tailwindcss.com)

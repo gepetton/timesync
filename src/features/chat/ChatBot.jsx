@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { analyzeTime } from '@/services/deepseek/client';
+import { analyzeTime } from '@/services/gemini/client';
 import { parseAvailability } from '@/shared/utils/roomUtils';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';

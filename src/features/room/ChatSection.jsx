@@ -3,7 +3,7 @@ import { FiMessageSquare, FiCalendar, FiCheck, FiAlertCircle } from 'react-icons
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useRoomContext } from '@/contexts/RoomContext';
-import { analyzeTime } from '@/services/deepseek/client';
+import { analyzeTime } from '@/services/gemini/client';
 import { parseAvailability } from '@/shared/utils/roomUtils';
 
 function ChatSection() {
