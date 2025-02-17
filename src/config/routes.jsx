@@ -4,6 +4,7 @@ import CreateRoomForm from '@/pages/Room/CreateRoomForm';
 import RoomView from '@/pages/Room/RoomView';
 import NotFoundPage from '@/pages/NotFound/NotFoundPage';
 import PageTransition from '@/shared/components/common/PageTransition';
+import CalendarTest from '../pages/Calendar/CalendarTest';
 
 const withPageTransition = (Component) => {
   return (
@@ -26,6 +27,10 @@ export const router = createBrowserRouter(
     {
       path: '/room/:roomId',
       element: withPageTransition(RoomView),
+    },
+    {
+      path: '/calendar-test',
+      element: <CalendarTest />
     },
     {
       path: '*',

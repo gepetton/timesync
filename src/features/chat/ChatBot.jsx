@@ -1,43 +1,11 @@
 import { useState } from 'react';
-import { analyzeTime } from '@/services/deepseek/client';
+import { analyzeTime } from '@/services/gemini/client';
 import { parseAvailability } from '@/shared/utils/roomUtils';
 import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import { FiMessageSquare, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { addHours, getWeek, endOfMonth } from 'date-fns';
-
-// 테스트용 더미 데이터
-const DUMMY_RESPONSES = {
-  success: {
-    content: [
-      {
-        date: new Date(),
-        type: 'available',
-        message: '이 시간 가능합니다.'
-      },
-      {
-        date: addHours(new Date(), 2),
-        type: 'available',
-        message: '이 시간도 가능합니다.'
-      }
-    ]
-  },
-  networkError: {
-    error: new Error('네트워크 연결에 실패했습니다.'),
-    code: 'NETWORK_ERROR',
-    details: 'API 서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.'
-  },
-  apiError: {
-    error: new Error('API 호출 중 오류가 발생했습니다.'),
-    code: 'API_ERROR',
-    details: '요청한 작업을 처리하는 중에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.'
-  },
-  parseError: {
-    error: new Error('응답 데이터 파싱 중 오류가 발생했습니다.'),
-    code: 'PARSE_ERROR',
-    details: '서버 응답을 처리하는 중에 문제가 발생했습니다. 입력 형식을 확인해주세요.'
-  }
-};
+import { useRoomContext } from '@/contexts/RoomContext';
 
 // 날짜가 선택된 기간 내에 있는지 확인하는 함수
 const isDateInRange = (date, roomData) => {
@@ -79,6 +47,7 @@ function ChatBot({ messages, setMessages, roomData, onUpdateRoom }) {
   const [inputMessage, setInputMessage] = useState('');
   const [isMessageSending, setIsMessageSending] = useState(false);
   const [messageStatus, setMessageStatus] = useState(null);
+  const { processUnavailableTimes } = useRoomContext();
 
   const handleSend = async (input) => {
     if (!input.trim() || isMessageSending) return;

@@ -68,7 +68,7 @@ export default defineConfig({
               req.url = '/services/deepseek'
 
               // deepseek 클라이언트 동적 임포트 및 시간 분석 처리
-              import('./src/services/deepseek/client.js').then(({ analyzeTime }) => {
+              import('./src/services/gemini/client.js').then(({ analyzeTime }) => {
                 let body = ''
                 
                 // 요청 본문 데이터 수집
