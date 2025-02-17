@@ -5,9 +5,13 @@ import { ko } from 'date-fns/locale';
 import { useRoomContext } from '@/contexts/RoomContext';
 import { analyzeTime } from '@/services/gemini/client';
 import { parseAvailability } from '@/shared/utils/roomUtils';
+import { roomService } from '@/services/firebase/roomService';
+import { useParams } from 'react-router-dom';
 
 function ChatSection() {
-  const { room, updateRoom, messages, setMessages } = useRoomContext();
+  const { roomId } = useParams();
+  const { room } = useRoomContext();
+  const [messages, setMessages] = useState([]); // 로컬 상태로만 관리
   const [inputMessage, setInputMessage] = useState('');
   const [isMessageSending, setIsMessageSending] = useState(false);
   const [messageStatus, setMessageStatus] = useState(null);
@@ -19,24 +23,27 @@ function ChatSection() {
     setMessageStatus(null);
 
     try {
-      // 사용자 메시지 추가
-      const userMessage = { role: 'user', content: inputMessage };
+      // 사용자 메시지 추가 (로컬에만 저장)
+      const userMessage = { role: 'user', content: inputMessage, timestamp: new Date().toISOString() };
       setMessages(prev => [...prev, userMessage]);
 
-      // API 호출
-      const response = await analyzeTime(inputMessage);
-      const availableSlots = parseAvailability(response.content);
+      // API 호출 - 기존 가능한 시간대 전달
+      const response = await analyzeTime(inputMessage, room.availableSlots || []);
+      const availableSlots = parseAvailability(response);
       
-      updateRoom({
+      // Firestore에는 availableSlots만 업데이트
+      await roomService.updateRoom(roomId, {
         availableSlots: [...(room.availableSlots || []), ...availableSlots]
       });
 
-      setMessageStatus({ type: 'success' });
+      // AI 응답 메시지 (로컬에만 저장)
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: response.content
+        content: response.content,
+        timestamp: new Date().toISOString()
       }]);
 
+      setMessageStatus({ type: 'success' });
       setInputMessage('');
 
     } catch (error) {
@@ -49,6 +56,8 @@ function ChatSection() {
           details: error.response?.data?.message || '알 수 없는 오류가 발생했습니다.'
         }
       });
+
+      // 에러 메시지 (로컬에만 저장)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: '죄송합니다. 시간 분석 중 오류가 발생했습니다.'
