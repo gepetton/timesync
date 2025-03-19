@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 min-h-screen min-w-[320px] m-0;
+  }
+  
+  h1 {
+    @apply text-4xl font-bold;
+  }
+  
+  h2 {
+    @apply text-2xl font-semibold;
+  }
+
+  a {
+    @apply font-medium text-primary-600 hover:text-primary-700;
+  }
+}
+
+@layer components {
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300;
+  }
+  
+  .input-primary {
+    @apply w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-colors;
+  }
+  
+  .btn-primary {
+    @apply px-4 py-2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-lg 
+    hover:from-primary-600 hover:to-secondary-600 transition-all duration-300
+    focus:ring-2 focus:ring-primary-500/50 disabled:opacity-50;
+  }
+}
