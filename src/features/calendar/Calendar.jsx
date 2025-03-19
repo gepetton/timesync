@@ -31,38 +31,6 @@ import WeekView from './WeekView'; // WeekView 컴포넌트를 import합니다. 
 import { TIME_FRAME } from '@/constants/roomTypes'; // '@/constants/roomTypes' 경로에서 TIME_FRAME 상수를 import합니다. 시간대 관련 상수들을 정의합니다.
 
 /**
- * 참여 가능 인원 수에 따른 색상 클래스를 결정하는 함수
- * 인원이 많을수록 더 진한 녹색으로 표시됩니다.
- * Tailwind CSS 클래스명을 반환하여 스타일을 적용합니다.
- *
- * @param {number} frequency - 해당 시간대의 참여 가능 인원 수
- * @returns {string} Tailwind CSS 클래스명 (bg-color)
- */
-const getAvailabilityColorClass = (frequency) => {
-  if (frequency === 0) return 'bg-white'; // 참여 가능 인원이 0명이면 흰색 배경
-  if (frequency <= 2) return 'bg-green-100'; // 1~2명: 연한 녹색
-  if (frequency <= 4) return 'bg-green-200'; // 3~4명: 조금 더 진한 녹색
-  if (frequency <= 6) return 'bg-green-300'; // 5~6명: 중간 녹색
-  if (frequency <= 8) return 'bg-green-400'; // 7~8명: 진한 녹색
-  return 'bg-green-500'; // 9명 이상: 매우 진한 녹색
-};
-
-/**
- * 특정 날짜의 참여 가능 인원 수를 계산하는 함수
- * availableSlots 배열에서 해당 날짜와 일치하는 slot의 개수를 세어 반환합니다.
- *
- * @param {Date} date - 계산할 날짜 (Date 객체)
- * @param {Array} availableSlots - 전체 참여 가능 시간대 목록 (객체 배열)
- * @returns {number} 해당 날짜의 참여 가능 인원 수
- */
-const getDateAvailabilityFrequency = (date, availableSlots) => {
-  return availableSlots.filter(slot => {
-    const slotDate = new Date(slot.date); // slot 객체의 date 속성을 Date 객체로 변환
-    return format(slotDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'); // 날짜 형식을 'yyyy-MM-dd'로 맞춰 비교
-  }).length; // 조건에 맞는 slot의 개수를 반환 (참여 가능 인원 수)
-};
-
-/**
  * 캘린더 컴포넌트의 메인 함수
  * viewType, availableSlots, startDate, endDate, onDateSelect, selectedYear, selectedMonth, selectedWeek, initialDate props를 받습니다.
  */
@@ -92,50 +60,6 @@ function Calendar({
       setCurrentDate(parsedDate); // 파싱 또는 그대로 startDate를 currentDate로 설정
     }
   }, [startDate, initialDate]); // startDate, initialDate prop이 변경될 때마다 useEffect 실행
-
-  // 현재 선택된 주(selectedWeek)가 props로 전달된 week와 일치하는지 확인하는 함수
-  const isWeekSelected = (week) => {
-    if (!selectedWeek) return false; // selectedWeek prop이 없으면 false 반환
-    const weekNumber = getWeek(week, { weekStartsOn: 0 }); // week의 주차 번호를 계산 (일요일 시작 기준)
-    return selectedWeek === `${weekNumber}주차`; // selectedWeek prop과 계산된 주차 번호가 "N주차" 형식으로 일치하는지 비교
-  };
-
-  // 이전 달 또는 주를 보여주는 핸들러 함수
-  const handlePrevious = () => {
-    let newDate;
-    if (viewType === TIME_FRAME.MONTH) {
-      newDate = addMonths(currentDate, -1); // 월간 뷰인 경우 현재 달에서 1개월 빼기
-    } else {
-      newDate = addWeeks(currentDate, -1); // 주간 뷰인 경우 현재 주에서 1주 빼기
-    }
-
-    if (isBefore(newDate, today)) return; // 새로 계산된 날짜가 오늘 이전이면 (과거 날짜 선택 방지) 함수 종료
-    setCurrentDate(newDate); // 새로 계산된 날짜로 currentDate 상태 업데이트
-  };
-
-  // 다음 달 또는 주를 보여주는 핸들러 함수
-  const handleNext = () => {
-    let newDate;
-    if (viewType === TIME_FRAME.MONTH) {
-      newDate = addMonths(currentDate, 1); // 월간 뷰인 경우 현재 달에서 1개월 더하기
-    } else {
-      newDate = addWeeks(currentDate, 1); // 주간 뷰인 경우 현재 주에서 1주 더하기
-    }
-    setCurrentDate(newDate); // 새로 계산된 날짜로 currentDate 상태 업데이트
-  };
-
-  // 캘린더 헤더 텍스트 (년, 월, 주차)를 반환하는 함수
-  const getHeaderText = () => {
-    if (viewType === TIME_FRAME.MONTH && selectedMonth) {
-      // 월간 뷰이고 selectedMonth prop이 있으면 "yyyy년 M월" 형식으로 반환 (한국어 locale 적용)
-      return format(new Date(currentDate.getFullYear(), selectedMonth - 1), 'yyyy년 M월', { locale: ko });
-    } else if (viewType === TIME_FRAME.WEEK && selectedWeek) {
-      // 주간 뷰이고 selectedWeek prop이 있으면 "yyyy년 M월 N주차" 형식으로 반환 (한국어 locale 적용)
-      return `${format(currentDate, 'yyyy년 M월', { locale: ko })} ${selectedWeek}`;
-    }
-    // 기본적으로 "yyyy년 M월" 형식으로 반환 (한국어 locale 적용)
-    return format(currentDate, 'yyyy년 M월', { locale: ko });
-  };
 
   return (
     // 캘린더 컴포넌트의 최상위 컨테이너, 흰색 배경, 둥근 테두리 적용

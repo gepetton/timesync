@@ -10,14 +10,15 @@
  * 사용자 경험을 향상시키기 위한 다양한 시각적 효과를 포함합니다.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUsers, FiCalendar, FiClock, FiArrowRight, FiMinus, FiPlus } from 'react-icons/fi';
 import PageTransition from '@/shared/components/common/PageTransition';
 import { motion } from 'framer-motion';
 import { WEEK_NAMES, DEFAULT_ROOM_DATA } from '@/constants/roomTypes'; // DEFAULT_ROOM_DATA import
-import { startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { roomService } from '@/services/firebase/roomService';
+import { v4 as uuidv4 } from "uuid";
 
 function CreateRoomForm() {
   // 라우터 네비게이션을 위한 훅
@@ -37,6 +38,7 @@ function CreateRoomForm() {
    */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === "title" && value.trim() === "") return; // 공백만 입력 방지
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -57,42 +59,44 @@ function CreateRoomForm() {
     }));
   };
 
-  /**
-   * 선택된 월의 주차 수를 계산하는 함수
-   * @param {number} month - 선택된 월 (1-12)
+    /**
+   * 특정 월의 주차 목록을 반환합니다.
+   * @param {number} year - 년도
+   * @param {number} month - 월 (1-12)
    * @returns {Array} 해당 월의 주차 목록
    */
-  const getWeeksInMonth = (month) => {
-    const year = new Date().getFullYear();
+  const getWeeksInMonth = (year, month) => {
     const startDate = startOfMonth(new Date(year, month - 1));
     const endDate = endOfMonth(startDate);
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const weeks = [];
+    let currentWeek = [];
 
-    // 해당 월의 모든 주차를 가져옴
-    const weeks = eachWeekOfInterval(
-      { start: startDate, end: endDate },
-      { weekStartsOn: 0 } // 일요일부터 시작
-    );
+    days.forEach((day) => {
+      const dayOfWeek = day.getDay(); // 0 (일요일) - 6 (토요일)
 
-    // 마지막 날짜가 속한 주차가 다음 달로 넘어가는 경우를 처리
-    const lastWeekStart = weeks[weeks.length - 1];
-    const lastWeekEnd = new Date(lastWeekStart);
-    lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
+      if (dayOfWeek === 0 && currentWeek.length > 0) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+      currentWeek.push(day);
+    });
 
-    // 마지막 주가 다음 달에 더 많이 포함되는 경우 제외
-    const actualWeeks = lastWeekEnd.getMonth() !== endDate.getMonth() &&
-                       lastWeekEnd.getDate() > 4 ? weeks.slice(0, -1) : weeks;
+    if (currentWeek.length > 0) {
+      weeks.push(currentWeek);
+    }
 
     // 주차 이름 매핑
-    return actualWeeks.map((weekStart, index) => {
-      // 현재 주차가 마지막 주차인지 확인
-      const isLastWeek = index === actualWeeks.length - 1;
-
-      return {
-        value: `${index + 1}주차`,
-        label: `${isLastWeek ? '마지막 주' : WEEK_NAMES[index]}`
-      };
-    });
+    return weeks.map((week, index) => ({
+      value: `${index + 1}주차`,
+      label: `${index === weeks.length - 1 ? '마지막 주' : `${index + 1}주차`}`
+    }));
   };
+
+  const getWeeks = useMemo(() => {
+    if (!formData.specificMonth) return [];
+    return getWeeksInMonth(new Date().getFullYear(), Number(formData.specificMonth));
+  }, [formData.specificMonth]);
 
   /**
    * 인원 수 변경 핸들러
@@ -142,14 +146,16 @@ function CreateRoomForm() {
    */
   const handleNext = () => {
     setDirection('left');
-    // 단계별 검증
     if (step === 1) {
       if (!formData.title.trim()) {
         alert('모임 이름을 입력해주세요.');
         return;
       }
-    }
-    else if (step === 2) {
+      if (formData.isPasswordProtected && formData.password.length < 4) {
+        alert('비밀번호는 최소 4자 이상이어야 합니다.');
+        return;
+      }
+    } else if (step === 2) {
       if (formData.timeFrame === 'month' && !formData.specificMonth) {
         alert('월을 선택해주세요.');
         return;
@@ -159,7 +165,6 @@ function CreateRoomForm() {
         return;
       }
     }
-
     setStep(prev => prev + 1);
   };
 
@@ -186,10 +191,11 @@ function CreateRoomForm() {
 
     const roomId = generateRoomId();
 
-    // formData 에 Date 객체 직접 저장
+    // formData 수정 - specificMonth를 Date 객체 대신 숫자로 저장
     const updatedFormData = {
       ...formData,
-      specificMonth: formData.specificMonth ? new Date(new Date().getFullYear(), formData.specificMonth - 1) : null,
+      // specificMonth는 문자열이나 숫자 그대로 사용 (1-12)
+      specificMonth: formData.specificMonth,
       specificWeek: formData.specificWeek, // week 는 문자열 그대로 사용
     };
 
@@ -200,7 +206,6 @@ function CreateRoomForm() {
       participants: [],
       unavailableSlotsByDate: {}, // 변경된 데이터 구조 적용
     };
-
 
     try {
       // Firestore에 방 데이터 저장
@@ -219,9 +224,9 @@ function CreateRoomForm() {
         navigate(`/room/${roomId}`, {
           state: {
             animate: true,
-            initialDate: updatedFormData.specificMonth?.toISOString() || null, // ISO 문자열 변환
+            initialDate: null, // Date 객체 대신 null 전달
             timeFrame: formData.timeFrame,
-            specificMonth: formData.specificMonth,
+            specificMonth: updatedFormData.specificMonth,
             specificWeek: formData.specificWeek
           }
         });
@@ -239,47 +244,7 @@ function CreateRoomForm() {
    * @returns {string} 생성된 룸 ID
    */
   const generateRoomId = () => {
-    return Math.random().toString(36).substring(2, 15) +
-           Math.random().toString(36).substring(2, 15);
-  };
-
-  /**
-   * 단계 표시 버튼의 스타일 클래스를 반환하는 함수
-   * @param {number} num - 단계 번호
-   * @returns {string} 스타일 클래스 문자열
-   */
-  const getStepClassName = (num) => {
-    return `w-10 h-10 rounded-xl flex items-center justify-center ${
-      step >= num
-        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-        : 'bg-gray-50 text-gray-400'
-    }`;
-  };
-
-  /**
-   * 시간대 선택 버튼의 스타일 클래스를 반환하는 함수
-   * @param {string} value - 시간대 값
-   * @returns {string} 스타일 클래스 문자열
-   */
-  const getTimeFrameButtonClass = (value) => {
-    return `p-4 rounded-2xl border-2 flex items-center space-x-3 hover:bg-indigo-50 transition-all duration-200 ${
-      formData.timeFrame === value
-        ? 'border-indigo-600 bg-indigo-50 shadow-lg shadow-indigo-100'
-        : 'border-gray-100 hover:border-indigo-200'
-    }`;
-  };
-
-  /**
-   * 인원 수 선택 버튼의 스타일 클래스를 반환하는 함수
-   * @param {number} num - 인원 수
-   * @returns {string} 스타일 클래스 문자열
-   */
-  const getMemberCountButtonClass = (num) => {
-    return `p-4 rounded-2xl border-2 flex items-center justify-center space-x-2 hover:bg-indigo-50 transition-all duration-200 ${
-      Number(formData.memberCount) === num
-        ? 'border-indigo-600 bg-indigo-50 shadow-lg shadow-indigo-100'
-        : 'border-gray-100 hover:border-indigo-200'
-    }`;
+    return uuidv4(); // 고유성이 보장된 ID 생성
   };
 
   /**
@@ -474,7 +439,7 @@ function CreateRoomForm() {
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-600 transition-colors bg-white/50 backdrop-blur-sm"
                             >
                               <option value="">주차 선택</option>
-                              {getWeeksInMonth(Number(formData.specificMonth)).map(({ value, label }) => (
+                              {getWeeks.map(({ value, label }) => (
                                 <option key={value} value={value}>{label}</option>
                               ))}
                             </select>
