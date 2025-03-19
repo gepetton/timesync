@@ -1,69 +1,6 @@
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameMonth, isBefore, startOfToday, addHours, setHours } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
-/**
- * 더미 데이터 생성 함수 (개발 및 테스트용)
- * 월간 캘린더 뷰에 표시할 가짜 시간대 데이터를 생성합니다.
- * 각 날짜마다 랜덤한 시간대에 참여 가능한 슬롯을 생성합니다.
- *
- * @returns {Array} 더미 시간대 데이터 배열 (객체 배열, date, isAvailable 속성 포함)
- */
-const generateDummySlots = () => {
-  const today = new Date(); // 현재 날짜를 가져옵니다.
-  const dummySlots = []; // 더미 데이터 저장할 배열 초기화
-
-  // 현재 달의 날짜들에 대해 랜덤한 시간대 생성 (31일까지)
-  for (let i = 0; i < 31; i++) {
-    const currentDate = addHours(today, i * 24); // 하루씩 증가 (date-fns의 addHours 사용)
-
-    // 각 날짜마다 랜덤한 개수(0~24)의 시간대 생성 (Math.random, Math.floor 활용)
-    const slotsCount = Math.floor(Math.random() * 24);
-
-    // 사용된 시간을 추적하기 위한 Set (시간 중복 방지)
-    const usedHours = new Set();
-
-    // slotsCount 만큼 시간대 생성
-    for (let j = 0; j < slotsCount; j++) {
-      // 0부터 23 사이의 랜덤한 시간 생성 (while 루프, usedHours Set 활용)
-      let hour;
-      do {
-        hour = Math.floor(Math.random() * 24); // 0~23 랜덤 시간 생성
-      } while (usedHours.has(hour)); // usedHours Set에 이미 존재하는 시간인지 확인
-
-      usedHours.add(hour); // usedHours Set에 현재 시간 추가
-
-      const slotDate = setHours(currentDate, hour); // 현재 날짜에 랜덤 시간 설정 (date-fns의 setHours 사용)
-
-      dummySlots.push({ // 더미 슬롯 데이터 배열에 추가
-        date: slotDate.toISOString(), // 날짜를 ISO 문자열 형식으로 저장
-        isAvailable: true // isAvailable 속성 (true로 설정)
-      });
-    }
-  }
-
-  return dummySlots; // 생성된 더미 슬롯 데이터 배열 반환
-};
-
-/**
- * MonthView 컴포넌트 데모 (테스트용)
- * generateDummySlots 함수를 사용하여 더미 데이터를 생성하고 MonthView 컴포넌트에 props로 전달하여 렌더링합니다.
- * 개발 및 UI 테스트 목적으로 사용됩니다.
- */
-export const MonthViewDemo = () => {
-  const dummySlots = generateDummySlots(); // generateDummySlots 함수 호출하여 더미 데이터 생성
-
-  return (
-    // MonthViewDemo 컴포넌트의 최상위 컨테이너, padding 적용
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">달력 데모</h2> {/* 데모 제목 */}
-      <MonthView
-        date={new Date()} // 현재 날짜를 MonthView에 전달
-        availableSlots={dummySlots} // 더미 슬롯 데이터를 MonthView에 전달
-        onDateSelect={(date) => console.log('Selected date:', date)} // 날짜 선택 시 콘솔에 로그 출력하는 핸들러 함수 전달
-      />
-    </div>
-  );
-};
 
 /**
  * 월간 캘린더 뷰 컴포넌트
