@@ -3,7 +3,7 @@ import HomePage from '@/pages/Home/HomePage';
 import CreateRoomForm from '@/pages/Room/CreateRoomForm';
 import RoomView from '@/pages/Room/RoomView';
 import NotFoundPage from '@/pages/NotFound/NotFoundPage';
-import PageTransition from '@/shared/components/common/PageTransition';
+import PageTransition from '@/config/PageTransition';
 
 const withPageTransition = (Component) => {
   return (

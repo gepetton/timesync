@@ -48,18 +48,17 @@ function Calendar({
   const [currentDate, setCurrentDate] = useState(initialDate || new Date()); // 현재 캘린더 날짜 상태, 초기값은 props로 받거나 현재 날짜
   const today = startOfToday(); // 오늘 날짜를 date-fns의 startOfToday() 함수로 가져옵니다 (시간 정보 제거)
 
-  // useEffect 훅을 사용하여 initialDate 또는 startDate props가 변경될 때 currentDate 상태를 업데이트합니다.
+  // initialDate 또는 startDate props 변경 시 currentDate 업데이트
   useEffect(() => {
     if (initialDate) {
-      setCurrentDate(initialDate); // initialDate prop이 있으면 currentDate를 initialDate로 설정
+      setCurrentDate(initialDate);
     } else if (startDate) {
-      // startDate prop이 있으면 currentDate를 startDate로 설정 (문자열인 경우 Date 객체로 파싱)
       const parsedDate = typeof startDate === 'string'
-        ? parse(startDate, 'yyyy-MM-dd', new Date()) // startDate가 문자열이면 'yyyy-MM-dd' 형식으로 파싱
-        : startDate; // startDate가 Date 객체이면 그대로 사용
-      setCurrentDate(parsedDate); // 파싱 또는 그대로 startDate를 currentDate로 설정
+        ? parse(startDate, 'yyyy-MM-dd', new Date())
+        : startDate;
+      setCurrentDate(parsedDate);
     }
-  }, [startDate, initialDate]); // startDate, initialDate prop이 변경될 때마다 useEffect 실행
+  }, [startDate, initialDate]);
 
   return (
     // 캘린더 컴포넌트의 최상위 컨테이너, 흰색 배경, 둥근 테두리 적용
@@ -70,16 +69,12 @@ function Calendar({
         {viewType === TIME_FRAME.WEEK || selectedWeek ? (
           <WeekView
             date={currentDate} // 현재 날짜 prop
-            availableSlots={availableSlots} // 참여 가능 시간대 목록 prop
-            onDateSelect={onDateSelect} // 날짜 선택 핸들러 함수 prop
             selectedWeek={selectedWeek} // 선택된 주차 prop
           />
         ) : (
           // 그 외의 경우 (월간 뷰) MonthView 컴포넌트 렌더링
           <MonthView
             date={currentDate} // 현재 날짜 prop
-            availableSlots={availableSlots} // 참여 가능 시간대 목록 prop
-            onDateSelect={onDateSelect} // 날짜 선택 핸들러 함수 prop
           />
         )}
       </div>

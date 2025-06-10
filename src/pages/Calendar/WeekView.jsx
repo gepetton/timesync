@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { startOfWeek, endOfWeek, eachDayOfInterval, eachHourOfInterval, format, isToday, isBefore, startOfToday, getWeek, parse, setWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useRoomContext } from '@/contexts/RoomContext';
 
 /**
  * 주간 캘린더 뷰 컴포넌트
@@ -12,6 +13,8 @@ import { ko } from 'date-fns/locale';
  * @param {string} props.selectedWeek - 선택된 주차 (예: "2주차")
  */
 function WeekView({ date, selectedWeek }) {
+  const { checkTimeAvailability } = useRoomContext();
+  
   // 오늘 날짜를 date-fns의 startOfToday() 함수로 가져옵니다 (시간 정보 제거)
   const today = startOfToday();
 
@@ -69,38 +72,47 @@ function WeekView({ date, selectedWeek }) {
   /**
    * 시간대 상태에 따른 스타일 클래스 이름을 반환하는 함수
    * 과거 시간대인지, 예약 가능한 시간대인지 여부에 따라 다른 스타일을 적용합니다.
+   * 오늘 날짜인 경우 현재 시간 이전은 과거 시간으로 처리합니다.
    *
    * @param {Date} dateTime - 특정 시간 (Date 객체)
    * @param {boolean} isAvailable - 예약 가능 여부 (true: 가능, false: 불가능)
    * @returns {string} Tailwind CSS 클래스 이름
    */
   const getTimeSlotStyle = (dateTime, isAvailable) => {
-    if (isBefore(dateTime, today)) {
-      // dateTime이 오늘 이전 (과거)이면 선택 불가능 스타일 (bg-gray-200, cursor-not-allowed)
-      return 'bg-gray-200 cursor-not-allowed';
+    const now = new Date(); // 현재 시간
+    
+    // 과거 날짜이거나, 오늘 날짜의 현재 시간 이전이면 과거 시간으로 처리
+    if (isBefore(dateTime, today) || 
+        (format(dateTime, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd') && 
+         dateTime.getHours() <= now.getHours())) {
+      // dateTime이 과거이면 선택 불가능 스타일 (bg-gray-200)
+      return 'bg-gray-200';
     }
-    // dateTime이 오늘 이후 (현재 또는 미래)이면 예약 가능 여부에 따라 스타일 결정
+    // dateTime이 미래이면 예약 가능 여부에 따라 스타일 결정
     return isAvailable
-      ? 'bg-emerald-200 hover:bg-emerald-300 cursor-pointer' // 예약 가능: bg-emerald-200, hover 시 bg-emerald-300, cursor-pointer
-      : 'bg-white hover:bg-gray-100 cursor-pointer'; // 예약 불가능: bg-white, hover 시 bg-gray-100, cursor-pointer
-  };
-
-  /**
-   * 특정 시간대의 예약 가능 여부를 확인하는 함수 (더미 로직)
-   * 실제 API 연동 시에는 API 호출을 통해 예약 가능 여부를 확인해야 합니다.
-   * 현재는 Math.random() > 0.5 로 임의의 boolean 값을 반환합니다.
-   *
-   * @param {Date} dateTime - 확인할 시간 (Date 객체)
-   * @returns {boolean} 예약 가능 여부 (true: 가능, false: 불가능) - 더미 값
-   */
-  const isTimeSlotAvailable = (dateTime) => {
-    // 실제 API 연동 시 여기서 해당 날짜/시간의 가능 여부를 반환 (API 호출)
-    return Math.random() > 0.5; // 테스트를 위한 임시 랜덤 boolean 값 반환 (50% 확률로 true)
+      ? 'bg-green-100' // 가능한 시간: 초록색
+      : 'bg-red-100'; // 불가능한 시간: 빨간색
   };
 
   return (
     // 주간 캘린더 뷰의 최상위 컨테이너, space-y-6 (세로 margin) 적용
     <div className="space-y-6">
+      {/* 범례 */}
+      <div className="flex items-center justify-center gap-6 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+          <span className="text-sm text-gray-600">가능한 시간</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+          <span className="text-sm text-gray-600">불가능한 시간</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
+          <span className="text-sm text-gray-600">과거 시간</span>
+        </div>
+      </div>
+
       {/* 주간 캘린더 Container (테두리, 둥근 모서리, 그림자 효과, overflow hidden 적용) */}
       <div className="border-2 border-gray-200 rounded-xl overflow-hidden shadow-md">
         {/* 요일 헤더 Row (시간 column + 7요일 column) */}
@@ -141,21 +153,25 @@ function WeekView({ date, selectedWeek }) {
             {weekDays.map((day) => { // weekDays 배열 순회 (요일 column cell 렌더링)
               const dateTime = new Date(day); // 현재 요일(day) Date 객체 복사
               dateTime.setHours(hour.getHours(), 0, 0, 0); // dateTime 객체에 현재 시간(hour) 설정 (분, 초, 밀리초 0으로 초기화)
-              const isAvailable = isTimeSlotAvailable(dateTime); // 해당 시간/날짜 예약 가능 여부 확인 (isTimeSlotAvailable 함수 호출)
-              const isPast = isBefore(dateTime, today); // 해당 시간/날짜 과거 여부 확인 (오늘 이전인지)
+              const isAvailable = checkTimeAvailability(dateTime, format(hour, 'HH:mm')); // RoomContext의 checkTimeAvailability 함수 사용
+              
+              const now = new Date(); // 현재 시간
+              // 과거 날짜이거나, 오늘 날짜의 현재 시간 이전이면 과거 시간으로 처리
+              const isPast = isBefore(dateTime, today) || 
+                           (format(dateTime, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd') && 
+                            dateTime.getHours() <= now.getHours());
 
               return (
                 // 시간대 button (선택 가능한 시간대) or div (선택 불가능한 시간대) 렌더링
-                <button
+                <div
                   key={dateTime.toString()} // key prop for React list rendering (시간/날짜 Date 객체 string 변환)
-                  disabled={isPast} // 과거 시간 선택 disabled 처리
                   className={`
                     h-12 transition-all duration-200 border-r-2 border-gray-200 last:border-r-0 // 높이, transition, border style
                     ${getTimeSlotStyle(dateTime, isAvailable)} // getTimeSlotStyle 함수 호출하여 스타일 클래스 이름 동적 결정
                     relative // relative positioning (hover effect overlay absolute positioning 기준)
                   `}
                 >
-                </button>
+                </div>
               );
             })}
           </div>

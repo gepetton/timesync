@@ -1,24 +1,12 @@
-/**
- * 모임 생성 폼 컴포넌트
- *
- * 사용자가 새로운 모임을 생성할 수 있는 3단계 폼을 제공합니다.
- * 1단계: 모임 이름 입력
- * 2단계: 모임 시간대 선택 (연/월/주/일)
- * 3단계: 참여 인원 선택
- *
- * 각 단계는 부드러운 애니메이션 효과와 함께 전환되며,
- * 사용자 경험을 향상시키기 위한 다양한 시각적 효과를 포함합니다.
- */
-
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUsers, FiCalendar, FiClock, FiArrowRight, FiMinus, FiPlus } from 'react-icons/fi';
-import PageTransition from '@/shared/components/common/PageTransition';
+import PageTransition from '@/config/PageTransition';
 import { motion } from 'framer-motion';
-import { WEEK_NAMES, DEFAULT_ROOM_DATA } from '@/constants/roomTypes'; // DEFAULT_ROOM_DATA import
-import { startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { DEFAULT_ROOM_DATA } from '@/constants/roomTypes';
+import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, isBefore, format } from 'date-fns';
 import { roomService } from '@/services/firebase/roomService';
-import { v4 as uuidv4 } from "uuid";
+import { FiCalendar, FiClock, FiArrowRight } from 'react-icons/fi';
+import { v4 as uuidv4 } from 'uuid';
 
 function CreateRoomForm() {
   // 라우터 네비게이션을 위한 훅
@@ -38,7 +26,7 @@ function CreateRoomForm() {
    */
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === "title" && value.trim() === "") return; // 공백만 입력 방지
+    // 모든 입력을 허용 (빈 문자열 포함)
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -86,17 +74,52 @@ function CreateRoomForm() {
       weeks.push(currentWeek);
     }
 
-    // 주차 이름 매핑
-    return weeks.map((week, index) => ({
-      value: `${index + 1}주차`,
-      label: `${index === weeks.length - 1 ? '마지막 주' : `${index + 1}주차`}`
-    }));
+    // 현재 날짜
+    const now = new Date();
+    const currentWeekStart = startOfWeek(now, { weekStartsOn: 0 }); // 일요일 시작
+
+    // 주차 이름 매핑 및 과거 주차 필터링
+    return weeks
+      .map((week, index) => {
+        const weekStart = startOfWeek(week[0], { weekStartsOn: 0 });
+        const isDisabled = isBefore(weekStart, currentWeekStart);
+        
+        return {
+          value: `${index + 1}주차`,
+          label: `${index === weeks.length - 1 ? '마지막 주' : `${index + 1}주차`}`,
+          disabled: isDisabled,
+          weekStart: weekStart
+        };
+      })
+      .filter(week => {
+        // 현재 월인 경우에만 과거 주차 필터링, 미래 월인 경우 모든 주차 표시
+        const selectedMonth = Number(formData.specificMonth);
+        const currentMonth = now.getMonth() + 1;
+        
+        if (selectedMonth > currentMonth) {
+          return true; // 미래 월은 모든 주차 표시
+        } else {
+          return !week.disabled; // 현재 월은 과거 주차 제외
+        }
+      });
   };
 
   const getWeeks = useMemo(() => {
     if (!formData.specificMonth) return [];
     return getWeeksInMonth(new Date().getFullYear(), Number(formData.specificMonth));
   }, [formData.specificMonth]);
+
+  // 현재 월 가져오기
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+
+  // 사용 가능한 월 목록 생성 (현재 월부터 12월까지)
+  const availableMonths = useMemo(() => {
+    const months = [];
+    for (let i = currentMonth; i <= 12; i++) {
+      months.push(i);
+    }
+    return months;
+  }, [currentMonth]);
 
   /**
    * 인원 수 변경 핸들러
@@ -203,12 +226,11 @@ function CreateRoomForm() {
       id: roomId,
       ...updatedFormData, // updatedFormData 사용
       createdAt: new Date().toISOString(),
-      participants: [],
       unavailableSlotsByDate: {}, // 변경된 데이터 구조 적용
     };
 
     try {
-      // Firestore에 방 데이터 저장
+      // Firebase Realtime Database에 방 데이터 저장
       await roomService.createRoom(roomId, roomData);
 
       // 페이지 전환 애니메이션
@@ -417,20 +439,22 @@ function CreateRoomForm() {
                       {/* 추가 선택 옵션 - 선택된 시간대에 따라 다른 입력 필드 표시 */}
                       {formData.timeFrame && (
                         <div className="space-y-4 pt-4">
-                          {/* 월 선택 */}
+                          {/* 월 선택 - 특정 달 또는 특정 주 선택 시 모두 표시 */}
                           <select
                             name="specificMonth"
                             value={formData.specificMonth}
                             onChange={handleInputChange}
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-600 transition-colors bg-white/50 backdrop-blur-sm"
                           >
-                            <option value="">월 선택</option>
-                            {Array.from({ length: 12 }, (_, i) => (
-                              <option key={i + 1} value={i + 1}>{i + 1}월</option>
+                            <option value="">
+                              {formData.timeFrame === 'month' ? '월 선택' : '월 선택 (주차를 선택하기 위해 먼저 월을 선택하세요)'}
+                            </option>
+                            {availableMonths.map((month) => (
+                              <option key={month} value={month}>{month}월</option>
                             ))}
                           </select>
 
-                          {/* 주차 선택 */}
+                          {/* 주차 선택 - 특정 주 선택 시에만 표시 */}
                           {formData.timeFrame === 'week' && formData.specificMonth && (
                             <select
                               name="specificWeek"
@@ -443,6 +467,25 @@ function CreateRoomForm() {
                                 <option key={value} value={value}>{label}</option>
                               ))}
                             </select>
+                          )}
+
+                          {/* 선택된 옵션 안내 텍스트 */}
+                          {formData.timeFrame === 'month' && formData.specificMonth && (
+                            <div className="text-sm text-gray-600 bg-indigo-50 p-3 rounded-lg">
+                              📅 <strong>{formData.specificMonth}월 전체</strong>에서 모임 시간을 조율합니다.
+                            </div>
+                          )}
+                          
+                          {formData.timeFrame === 'week' && formData.specificMonth && !formData.specificWeek && (
+                            <div className="text-sm text-gray-500 bg-yellow-50 p-3 rounded-lg">
+                              ⚠️ 주차를 선택해주세요.
+                            </div>
+                          )}
+                          
+                          {formData.timeFrame === 'week' && formData.specificMonth && formData.specificWeek && (
+                            <div className="text-sm text-gray-600 bg-indigo-50 p-3 rounded-lg">
+                              📅 <strong>{formData.specificMonth}월 {formData.specificWeek}</strong>에서 모임 시간을 조율합니다.
+                            </div>
                           )}
                         </div>
                       )}

@@ -1,18 +1,19 @@
+import { useMemo, useCallback } from 'react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameMonth, isBefore, startOfToday, addHours, setHours } from 'date-fns';
 import { ko } from 'date-fns/locale';
-
+import { useRoomContext } from '@/contexts/RoomContext';
 
 /**
  * 월간 캘린더 뷰 컴포넌트
- * 한 달의 날짜 그리드를 표시하고, 각 날짜별 참여 가능 시간대 정보를 시각화합니다.
+ * 한 달의 날짜 그리드를 표시하고, 각 날짜별 불가능한 시간대 정보를 시각화합니다.
  * 날짜 선택 기능을 제공하며, 과거 날짜는 선택 불가능하도록 처리합니다.
  *
  * @param {Object} props
  * @param {Date} props.date - 현재 월을 표시하기 위한 기준 날짜 (Date 객체)
- * @param {Array} props.availableSlots - 참여 가능 시간대 목록 (객체 배열)
- * @param {Function} props.onDateSelect - 날짜 선택 시 호출되는 핸들러 함수 (선택된 Date 객체, 뷰 타입 문자열 인자)
  */
-function MonthView({ date, availableSlots = [], onDateSelect }) {
+function MonthView({ date }) {
+  const { room, handleDateSelect, checkTimeAvailability } = useRoomContext();
+  
   // 오늘 날짜를 가져옵니다. (시간 정보 제거)
   const today = startOfToday();
   // 주어진 날짜(date)의 해당 월의 시작 날짜를 가져옵니다. (예: 2025년 2월 17일 -> 2025년 2월 1일)
@@ -43,24 +44,54 @@ function MonthView({ date, availableSlots = [], onDateSelect }) {
   }
 
   /**
-   * 특정 날짜에 해당하는 참여 가능 시간대(hours)를 Set 객체로 반환하는 함수
-   * availableSlots 배열을 순회하며, 주어진 date와 날짜가 일치하는 slot들을 필터링합니다.
-   * 필터링된 slot들의 시간(hour) 정보를 Set에 담아 중복 없이 반환합니다.
-   *
-   * @param {Date} date - 특정 날짜 (Date 객체)
-   * @returns {Set<number>} 해당 날짜에 참여 가능한 시간(hour) Set (중복 제거)
+   * 특정 날짜에 해당하는 가능한 시간대(hours)를 Set 객체로 반환하는 함수
+   * unavailableSlotsByDate를 기반으로 가능한 시간대를 계산합니다.
+   * 오늘 날짜인 경우 현재 시간 이전은 불가능한 시간으로 처리합니다.
+   * 성능 최적화를 위해 useMemo로 memoization 처리
    */
-  const getDateAvailableHours = (date) => {
+  const getDateAvailableHours = useCallback((dateToCheck, todayRef) => {
     const hours = new Set(); // 시간 정보를 Set으로 저장 (중복 제거)
-    availableSlots.forEach(slot => { // availableSlots 배열 순회
-      const slotDate = new Date(slot.date); // slot의 date 속성을 Date 객체로 변환
-      if (format(slotDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')) { // 날짜 형식이 'yyyy-MM-dd'로 일치하는 slot 필터링
-        hours.add(slotDate.getHours()); // 일치하는 slot의 시간(hour)을 Set에 추가
+    const now = new Date(); // 현재 시간
+    const isToday = format(dateToCheck, 'yyyy-MM-dd') === format(todayRef, 'yyyy-MM-dd'); // 오늘 날짜인지 확인 (일관된 기준 사용)
+    const currentHour = now.getHours(); // 현재 시간(시)
+    
+    // 0-23시까지 모든 시간을 체크
+    for (let hour = 0; hour < 24; hour++) {
+      // 오늘 날짜이고 현재 시간 이전이면 불가능한 시간으로 처리
+      if (isToday && hour <= currentHour) {
+        continue; // 현재 시간 이전은 불가능
+      }
+      
+      const timeStr = hour.toString().padStart(2, '0') + ':00';
+      if (checkTimeAvailability(dateToCheck, timeStr)) {
+        hours.add(hour);
+      }
+    }
+    
+    return hours; // 가능한 시간(hour) Set 반환
+  }, [checkTimeAvailability]);
+
+  // 날짜별 가용한 시간대를 memoization하여 성능 최적화
+  const dateAvailabilityMap = useMemo(() => {
+    const map = new Map();
+    days.forEach(day => {
+      if (!isBefore(day, today)) {
+        map.set(day.toDateString(), getDateAvailableHours(day, today)); // today를 매개변수로 전달
       }
     });
-    return hours; // 참여 가능한 시간(hour) Set 반환
-  };
+    return map;
+  }, [days, today, getDateAvailableHours, room.unavailableSlotsByDate]);
 
+  /**
+   * 날짜 클릭 핸들러
+   * @param {Date} selectedDate - 클릭된 날짜
+   */
+  const handleDateClick = useCallback((selectedDate) => {
+    if (isBefore(selectedDate, today)) {
+      return; // 과거 날짜는 클릭 불가
+    }
+    handleDateSelect(selectedDate, 'month');
+  }, [today, handleDateSelect]);
 
   return (
     // 월간 캘린더 뷰의 최상위 컨테이너, 테두리, 둥근 모서리, overflow hidden 적용
@@ -97,18 +128,18 @@ function MonthView({ date, availableSlots = [], onDateSelect }) {
 
               const isToday = format(day, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd'); // 현재 날짜가 오늘인지 확인
               const isPast = isBefore(day, today); // 현재 날짜가 과거인지 확인 (오늘 이전)
-              const availableHours = !isPast ? getDateAvailableHours(day) : new Set(); // 과거 날짜가 아니면 참여 가능 시간대 hours Set 가져오기, 과거 날짜면 빈 Set
+              const availableHours = dateAvailabilityMap.get(day.toDateString()) || new Set(); // memoized 가용 시간 정보 사용
 
               return (
                 // 날짜 Cell Button (선택 가능 날짜) or Div (선택 불가능 날짜) 렌더링
                 <button
                   key={day.toString()} // key prop for React list rendering (날짜 Date 객체 string 변환)
-                  onClick={() => onDateSelect(day, 'day')} // 날짜 클릭 시 onDateSelect 핸들러 호출 (날짜 Date 객체, 'day' 뷰 타입 전달)
+                  onClick={() => handleDateClick(day)} // 날짜 클릭 시 handleDateClick 핸들러 호출
                   disabled={isPast} // 과거 날짜 선택 disabled 처리
                   className={`
                     h-32 relative border-b border-r last:border-r-0 // 높이, relative positioning, border 스타일
-                    ${isPast ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'} // 과거 날짜 배경색, cursor 변경
-                    group transition-all duration-200 hover:shadow-lg // hover 시 그림자 효과, transition 효과
+                    ${isPast ? 'bg-gray-50 cursor-not-allowed' : 'bg-white hover:bg-gray-50'} // 과거 날짜 배경색, cursor 변경
+                    group transition-transform duration-150 hover:scale-[1.02] // 최적화된 hover 효과 (transform만 변경)
                   `}
                 >
                   {/* 날짜 숫자 표시 Container (Cell 상단 좌측) */}
@@ -125,15 +156,6 @@ function MonthView({ date, availableSlots = [], onDateSelect }) {
                     </div>
                   </div>
 
-                  {/* 참여 가능 시간 slotsCount 표시 Container (Cell 상단 우측) */}
-                  {!isPast && availableHours.size > 0 && ( // 과거 날짜가 아니고, 참여 가능 시간대가 있는 경우에만 표시
-                    <div className="absolute top-2 right-2">
-                      <div className="px-1.5 py-0.5 bg-emerald-50 rounded text-xs font-medium text-emerald-600">
-                        {availableHours.size}h {/* 참여 가능 시간 slotsCount 표시 */}
-                      </div>
-                    </div>
-                  )}
-
                   {/* 시간대별 가용성 Bar Chart Container (Cell 하단) */}
                   {!isPast && ( // 과거 날짜가 아닌 경우에만 표시
                     <div className="absolute inset-x-2 bottom-2">
@@ -145,17 +167,17 @@ function MonthView({ date, availableSlots = [], onDateSelect }) {
                             { label: '오후', hours: [12, 13, 14, 15, 16, 17] }, // 오후 시간대 (12시~17시)
                             { label: '저녁', hours: [18, 19, 20, 21, 22, 23] }  // 저녁 시간대 (18시~23시)
                           ].map(({ label, hours }) => { // 시간대별 정보 배열 순회 (아침, 오후, 저녁)
-                            const availableCount = hours.filter(h => availableHours.has(h)).length; // 각 시간대별 참여 가능 시간 slotsCount 계산
-                            const percentage = (availableCount / hours.length) * 100; // 참여 가능 slotsCount 비율 계산 (%)
+                            const availableCount = hours.filter(h => availableHours.has(h)).length; // 각 시간대별 가능한 시간 수 계산
+                            const percentage = (availableCount / hours.length) * 100; // 가능한 시간 비율 계산 (%)
                             return (
                               // 시간대별 Bar Chart Item Container (flex-1: flex grow)
                               <div key={label} className="flex-1">
                                 {/* Bar Chart 막대 Container (bg-gray-100: 기본 배경색, rounded-full: 둥근 모서리, overflow-hidden: overflow hidden) */}
                                 <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                                  {/* Bar Chart 막대 (h-full: 높이 100%, transition-all, duration-300: transition 효과, rounded-full: 둥근 모서리) */}
+                                  {/* Bar Chart 막대 (h-full: 높이 100%, transition-width: width만 transition, duration-300: transition 효과, rounded-full: 둥근 모서리) */}
                                   <div
-                                    className={`h-full transition-all duration-300 rounded-full ${
-                                      percentage > 0 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : '' // 참여 가능 slotsCount > 0 이면 그라디언트 배경색 적용
+                                    className={`h-full transition-[width] duration-300 rounded-full ${
+                                      percentage > 0 ? 'bg-gradient-to-r from-green-400 to-green-500' : '' // 가능한 시간 > 0 이면 초록색 그라디언트 배경색 적용
                                     }`}
                                     style={{ width: `${percentage}%` }} // width style prop으로 비율 적용
                                   />
@@ -172,9 +194,9 @@ function MonthView({ date, availableSlots = [], onDateSelect }) {
                     </div>
                   )}
 
-                  {/* hover effect overlay (Cell hover 시 테두리선) */}
+                  {/* hover effect overlay (Cell hover 시 테두리선) - 최적화된 버전 */}
                   {!isPast && ( // 과거 날짜가 아닌 경우에만 hover effect overlay 표시
-                    <div className="absolute inset-1 rounded-lg border-2 border-transparent group-hover:border-emerald-200 transition-colors" />
+                    <div className="absolute inset-1 rounded-lg border-2 border-transparent group-hover:border-green-200 transition-colors duration-150" />
                   )}
                 </button>
               );

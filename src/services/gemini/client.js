@@ -1,49 +1,26 @@
 // client.js
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { TIME_ANALYSIS_PROMPT } from './prompts';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-const schema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    unavailableTimes: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          start: {
-            type: SchemaType.STRING,
-            description: "시작 시간 (ISO 8601 형식)",
-          },
-          end: {
-            type: SchemaType.STRING,
-            description: "종료 시간 (ISO 8601 형식)",
-          },
-        },
-        required: ["start", "end"],
-      },
-    },
-  },
-  required: ["unavailableTimes"],
-};
+const formatExistingTimes = (unavailableSlotsByDate = {}) => {
+  const entries = Object.entries(unavailableSlotsByDate);
+  if (!entries.length) return "아직 없음";
 
-const formatExistingTimes = (unavailableSlots = []) => {
-  if (!unavailableSlots.length) return "아직 없음";
-
-  return unavailableSlots
-    .map(slot => {
-      const date = new Date(slot.date);
-      return format(date, 'yyyy년 M월 d일 a h시', { locale: ko });
+  return entries
+    .map(([date, slots]) => {
+      const formattedSlots = slots.map(slot => `${slot.start}-${slot.end}`).join(', ');
+      return `${date}: ${formattedSlots}`;
     })
-    .join(', ');
+    .join(' | ');
 };
 
-export async function analyzeTime(message, existingSlots = []) {
+export async function analyzeTime(message, selectedDate, existingSlotsByDate = {}) {
   try {
-    console.log('🚀 Gemini API 요청:', { message, existingSlots });
+    console.log('🚀 Gemini API 요청:', { message, selectedDate, existingSlotsByDate });
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
@@ -52,21 +29,20 @@ export async function analyzeTime(message, existingSlots = []) {
         temperature: 0.3,
         maxOutputTokens: 1000,
         responseMimeType: "application/json",
-        responseSchema: schema,
       },
     });
 
-    const formattedExistingTimes = formatExistingTimes(existingSlots);
-    // currentDate와 currentTime을 한국 시간 기준으로 얻기
+    const formattedExistingTimes = formatExistingTimes(existingSlotsByDate);
     const currentDate = format(new Date(), 'yyyy년 M월 d일', { locale: ko });
     const currentTime = format(new Date(), 'a h:mm', { locale: ko });
+    const targetDate = format(selectedDate, 'yyyy년 M월 d일', { locale: ko });
 
     const prompt = TIME_ANALYSIS_PROMPT
       .replace('{message}', message)
       .replace('{existingTimes}', formattedExistingTimes)
       .replace('{currentDate}', currentDate)
-      .replace('{currentTime}', currentTime);
-
+      .replace('{currentTime}', currentTime)
+      .replace('{targetDate}', targetDate);
 
     const result = await model.generateContent(prompt);
     const content = result.response.text();
@@ -76,13 +52,35 @@ export async function analyzeTime(message, existingSlots = []) {
     try {
       const parsedContent = JSON.parse(content);
       console.log('✅ 파싱된 응답:', parsedContent);
+      
+      // 응답 검증 및 안전 처리
+      if (!parsedContent || typeof parsedContent !== 'object') {
+        console.warn('⚠️ 잘못된 응답 형식:', parsedContent);
+        return { unavailableSlotsByDate: {} };
+      }
+      
+      if (!parsedContent.unavailableSlotsByDate || typeof parsedContent.unavailableSlotsByDate !== 'object') {
+        console.warn('⚠️ unavailableSlotsByDate가 없거나 잘못된 형식:', parsedContent);
+        return { unavailableSlotsByDate: {} };
+      }
+      
       return parsedContent;
     } catch (error) {
       console.error('❌ Gemini 응답 파싱 실패:', error);
-      return { unavailableTimes: [] };
+      return { unavailableSlotsByDate: {} };
     }
   } catch (error) {
     console.error('❌ 시간 분석 중 오류 발생:', error);
-    return { unavailableTimes: [] };
+    
+    // 네트워크 오류나 API 키 문제 등을 구분하여 처리
+    if (error.message?.includes('API key')) {
+      throw new Error('API 키가 올바르지 않습니다. 환경 변수를 확인해주세요.');
+    } else if (error.message?.includes('quota')) {
+      throw new Error('API 사용량 한도를 초과했습니다.');
+    } else if (error.message?.includes('400')) {
+      throw new Error('요청 형식이 올바르지 않습니다.');
+    } else {
+      throw new Error('시간 분석 서비스에 일시적인 문제가 발생했습니다.');
+    }
   }
 }

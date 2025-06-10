@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { FiCalendar, FiUsers, FiArrowRight, FiGithub } from 'react-icons/fi';
-import PageTransition from '@/shared/components/common/PageTransition';
 
 const HomePage = () => {
   return (

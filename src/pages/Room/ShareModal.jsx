@@ -1,5 +1,5 @@
 import { FiX } from 'react-icons/fi';
-import ShareLink from '@/features/room/ShareLink';
+import ShareLink from '@/pages/Room/ShareLink';
 import { useRoomContext } from '@/contexts/RoomContext';
 
 function ShareModal({ roomId, onClose }) {
